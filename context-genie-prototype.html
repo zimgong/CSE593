@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Context Genie – High Fidelity Prototype</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --bg: #f1f3f9;
+      --shell: #ffffff;
+      --border: #cfd5ea;
+      --chip-bg: rgba(99, 102, 241, 0.08);
+      --chip-text: #2c2f65;
+      --text-secondary: #54638c;
+      --accent: #7c3aed;
+      --accent-dark: #5b21b6;
+      --danger: #ef4444;
+      --passive: #4c51bf;
+      --balanced: #059669;
+      --aggressive: #ef4444;
+      --keyboard-key: #f5f7fb;
+      --keyboard-border: #d9deef;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(160deg, #dfe6ff 0%, #f8f5ff 40%, #fff8f5 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      color: #121735;
+    }
+
+    .phone-shell {
+      position: relative;
+      width: min(400px, 100%);
+      max-width: 380px;
+      height: 760px;
+      border-radius: 36px;
+      padding: 24px 18px 32px;
+      background: var(--shell);
+      box-shadow: 0 40px 60px -40px rgba(28, 31, 53, 0.4), 0 20px 30px rgba(28, 31, 53, 0.08);
+      border: 1px solid rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .notch {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 130px;
+      height: 18px;
+      background: #111218;
+      border-radius: 9px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 600;
+      color: #0e1537;
+    }
+
+    header .contact {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    header .contact .avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6d28d9, #5eead4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 14px;
+    }
+
+    header .icons {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .thread {
+      flex: 1;
+      background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+      border-radius: 22px;
+      padding: 24px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      border: 1px solid rgba(99, 102, 241, 0.08);
+    }
+
+    .bubble {
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      font-size: 15px;
+      line-height: 1.4;
+      color: #111b3a;
+    }
+
+    .bubble.incoming {
+      background: #f1f4ff;
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+
+    .bubble.outgoing {
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.88), rgba(99, 102, 241, 0.88));
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    .composer {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .suggestion-bar {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .chip {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 6px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      background: var(--chip-bg);
+      color: var(--chip-text);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .chip:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 12px -8px rgba(17, 24, 39, 0.3);
+    }
+
+    .chip[data-language="en"] {
+      background: rgba(99, 102, 241, 0.12);
+      border-color: rgba(99, 102, 241, 0.24);
+      color: #3730a3;
+    }
+
+    .chip[data-language="ru"] {
+      background: rgba(139, 92, 246, 0.16);
+      border-color: rgba(124, 58, 237, 0.22);
+      color: #4c1d95;
+    }
+
+    .chip[data-language="id"] {
+      background: rgba(16, 185, 129, 0.14);
+      border-color: rgba(5, 150, 105, 0.22);
+      color: #047857;
+    }
+
+    .chip[data-language="slang"] {
+      background: rgba(249, 115, 22, 0.14);
+      border-color: rgba(234, 88, 12, 0.24);
+      color: #c2410c;
+    }
+
+    .chip[data-language="emoji"] {
+      background: rgba(236, 72, 153, 0.14);
+      border-color: rgba(236, 72, 153, 0.24);
+      color: #be185d;
+    }
+
+    .chip .language-tag {
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      opacity: 0.8;
+    }
+
+    .composer-field {
+      position: relative;
+      background: var(--bg);
+      border-radius: 18px;
+      border: 1.5px solid var(--border);
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: 1fr 58px;
+      align-items: center;
+      gap: 12px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .composer-field:focus-within {
+      border-color: rgba(124, 58, 237, 0.65);
+      box-shadow: 0 16px 30px -24px rgba(124, 58, 237, 0.6);
+    }
+
+    .composer-field textarea {
+      background: transparent;
+      border: none;
+      resize: none;
+      font-size: 15px;
+      font-family: inherit;
+      line-height: 1.45;
+      color: #121632;
+      outline: none;
+      min-height: 52px;
+    }
+
+    .genie-toggle {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .genie-toggle button {
+      width: 52px;
+      height: 52px;
+      border-radius: 18px;
+      border: none;
+      font-weight: 700;
+      color: white;
+      background: linear-gradient(140deg, #8b5cf6, #6366f1);
+      box-shadow: 0 12px 30px -15px rgba(79, 70, 229, 0.9);
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .genie-toggle button.inactive {
+      background: linear-gradient(150deg, #a3a7c7, #6b7280);
+      box-shadow: none;
+    }
+
+    .genie-toggle button:active {
+      transform: scale(0.96);
+    }
+
+    .genie-toggle span {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .keyboard {
+      background: rgba(15, 23, 42, 0.02);
+      border-radius: 28px;
+      padding: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      display: grid;
+      grid-template-columns: repeat(10, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .key {
+      height: 44px;
+      background: var(--keyboard-key);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 15px;
+      color: #1f2937;
+      border: 1px solid var(--keyboard-border);
+      box-shadow: inset 0 -2px 0 rgba(148, 163, 184, 0.2);
+    }
+
+    .key.special {
+      grid-column: span 2;
+    }
+
+    .key.space {
+      grid-column: span 4;
+    }
+
+    .key.send {
+      grid-column: span 2;
+      background: linear-gradient(140deg, #6366f1, #14b8a6);
+      color: white;
+      border: none;
+      box-shadow: 0 10px 20px -16px rgba(15, 118, 110, 0.8);
+    }
+
+    .overlay {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 120px;
+      background: rgba(15, 23, 42, 0.56);
+      border-radius: 24px;
+      padding: 2px;
+      transform: translateY(120%);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.35s cubic-bezier(0.25, 0.9, 0.4, 1), opacity 0.35s ease;
+      backdrop-filter: blur(14px);
+    }
+
+    .overlay.visible {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .overlay-inner {
+      background: #101324;
+      border-radius: 22px;
+      padding: 22px 24px 26px;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .overlay-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .overlay-header h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .overlay-header button {
+      background: rgba(255, 255, 255, 0.12);
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .slider-label span {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    .slider-label strong {
+      font-size: 16px;
+      color: white;
+    }
+
+    .slider-track {
+      position: relative;
+    }
+
+    .slider-track input[type="range"] {
+      width: 100%;
+      -webkit-appearance: none;
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(76, 81, 191, 0.4) 0%, rgba(59, 130, 246, 0.5) 40%, rgba(99, 102, 241, 0.9) 100%);
+      outline: none;
+    }
+
+    .slider-track input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #a855f7, #6366f1);
+      border: 3px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 12px 24px -18px rgba(139, 92, 246, 0.9);
+      cursor: pointer;
+    }
+
+    .slider-track input[type="range"]::-moz-range-thumb {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #a855f7, #6366f1);
+      border: 3px solid rgba(255, 255, 255, 0.9);
+      cursor: pointer;
+    }
+
+    .slider-badges {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.45);
+      letter-spacing: 0.08em;
+    }
+
+    .accent-passive {
+      color: #cbd5f5;
+    }
+
+    .accent-balanced {
+      color: #bbf7d0;
+    }
+
+    .accent-aggressive {
+      color: #fecaca;
+    }
+
+    .dictionary-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .dictionary-pills .pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+
+    .status-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 14px;
+      background: rgba(99, 102, 241, 0.14);
+      color: #1e1b4b;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .status-banner[data-mode="passive"] {
+      background: rgba(76, 81, 191, 0.14);
+      color: #312e81;
+    }
+
+    .status-banner[data-mode="balanced"] {
+      background: rgba(5, 150, 105, 0.12);
+      color: #064e3b;
+    }
+
+    .status-banner[data-mode="aggressive"] {
+      background: rgba(239, 68, 68, 0.12);
+      color: #7f1d1d;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.6;
+    }
+
+    .microcopy {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.68);
+      line-height: 1.5;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 18px;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+      margin-top: -4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="phone-shell" role="application" aria-label="Context Genie prototype">
+    <div class="notch" aria-hidden="true"></div>
+    <header>
+      <div class="contact">
+        <span id="time">1:25</span>
+        <span>‹</span>
+        <div class="avatar">H</div>
+        <span>Heather</span>
+      </div>
+      <div class="icons">
+        <span>5G</span>
+        <span>􀓇</span>
+      </div>
+    </header>
+
+    <div class="thread" aria-live="polite">
+      <div class="bubble incoming">Hey! Let’s keep it casual in English but I’ll try some Russian phrases.</div>
+      <div class="bubble outgoing">Sounds good! I'll sprinkle in some slang too.</div>
+      <div class="bubble incoming">Как дела? Need anything from the store?</div>
+    </div>
+
+    <div class="composer">
+      <div class="status-banner" data-mode="balanced" id="modeBanner">
+        <div class="status-dot"></div>
+        <span id="modeMessage">Genie adapting tone and language automatically.</span>
+      </div>
+
+      <div class="suggestion-bar" id="suggestionBar">
+        <!-- suggestions injected here -->
+      </div>
+
+      <div class="composer-field">
+        <textarea id="composer" placeholder="Draft your reply…" aria-label="Message composer with Context Genie suggestions"></textarea>
+        <div class="genie-toggle">
+          <button id="genieButton">GENIE</button>
+          <span id="genieState">Active</span>
+        </div>
+      </div>
+      <p class="hint">Single tap to toggle Genie. Double tap to open personalization menu.</p>
+    </div>
+
+    <div class="keyboard">
+      <div class="key">Q</div>
+      <div class="key">W</div>
+      <div class="key">E</div>
+      <div class="key">R</div>
+      <div class="key">T</div>
+      <div class="key">Y</div>
+      <div class="key">U</div>
+      <div class="key">I</div>
+      <div class="key">O</div>
+      <div class="key">P</div>
+
+      <div class="key">A</div>
+      <div class="key">S</div>
+      <div class="key">D</div>
+      <div class="key">F</div>
+      <div class="key">G</div>
+      <div class="key">H</div>
+      <div class="key">J</div>
+      <div class="key">K</div>
+      <div class="key">L</div>
+      <div class="key special">⌫</div>
+
+      <div class="key special">⇧</div>
+      <div class="key">Z</div>
+      <div class="key">X</div>
+      <div class="key">C</div>
+      <div class="key">V</div>
+      <div class="key">B</div>
+      <div class="key">N</div>
+      <div class="key">M</div>
+      <div class="key special">,</div>
+      <div class="key special">.</div>
+
+      <div class="key special">123</div>
+      <div class="key space">space</div>
+      <div class="key send">send</div>
+    </div>
+
+    <footer>Context Genie prototype • LLM-informed multilingual suggestions</footer>
+
+    <div class="overlay" id="genieOverlay" aria-hidden="true">
+      <div class="overlay-inner">
+        <div class="overlay-header">
+          <h2>Context Genie Controls</h2>
+          <button id="closeOverlay">Done</button>
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-label">
+            <strong id="modeLabel">Balanced Guidance</strong>
+            <span id="modeDescriptor">Keeps tone aligned while letting you drive.</span>
+          </div>
+          <div class="slider-track">
+            <input type="range" id="overrideSlider" min="0" max="100" value="55">
+          </div>
+          <div class="slider-badges">
+            <span class="accent-passive">Passive</span>
+            <span class="accent-balanced">Balanced</span>
+            <span class="accent-aggressive">Aggressive</span>
+          </div>
+        </div>
+
+        <div>
+          <h3 style="margin: 0 0 10px; font-size: 15px; letter-spacing: 0.02em;">Active Dictionaries</h3>
+          <div class="dictionary-pills" id="dictionaryPills">
+            <span class="pill">English – Casual (LLM)</span>
+            <span class="pill">Russian – Cyrillic (LLM)</span>
+            <span class="pill">Bahasa – Slang (LLM)</span>
+            <span class="pill">Emoji/Social Tone</span>
+          </div>
+        </div>
+
+        <div class="microcopy">
+          Genie uses local context + recipient profile + on-device LLM priors.
+          In aggressive mode Genie can override your draft; in passive mode it never changes your text without a tap.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const genieButton = document.getElementById('genieButton');
+    const genieState = document.getElementById('genieState');
+    const overlay = document.getElementById('genieOverlay');
+    const closeOverlay = document.getElementById('closeOverlay');
+    const overrideSlider = document.getElementById('overrideSlider');
+    const modeLabel = document.getElementById('modeLabel');
+    const modeDescriptor = document.getElementById('modeDescriptor');
+    const modeBanner = document.getElementById('modeBanner');
+    const modeMessage = document.getElementById('modeMessage');
+    const composer = document.getElementById('composer');
+    const suggestionBar = document.getElementById('suggestionBar');
+
+    const MODE_COPY = {
+      passive: {
+        label: 'Listening Only',
+        banner: 'Genie observing. Tap a chip to accept.',
+        descriptor: 'Suggestions match tone but never change your draft.',
+        bannerMode: 'passive'
+      },
+      balanced: {
+        label: 'Balanced Guidance',
+        banner: 'Genie adapting tone and language automatically.',
+        descriptor: 'Genie keeps context aligned and prompts you at the right moments.',
+        bannerMode: 'balanced'
+      },
+      aggressive: {
+        label: 'Turbo Rewrite',
+        banner: 'Genie will auto-upgrade slang, tone, and language mid-phrase.',
+        descriptor: 'Prioritizes seamless flow; overrides appear inline with undo support.',
+        bannerMode: 'aggressive'
+      }
+    };
+
+    const suggestionLibrary = [
+      {
+        trigger: /^k(?:ak|ak|ag)$/i,
+        suggestions: [
+          { text: 'Как дела?', language: 'ru', note: 'LLM • Russian' },
+          { text: 'Kak dilá?', language: 'id', note: 'LLM • Bahasa slang' },
+          { text: 'Как ты?', language: 'ru', note: 'LLM • Russian' },
+          { text: 'Kak are you?', language: 'slang', note: 'LLM remix' }
+        ]
+      },
+      {
+        trigger: /^ya$/i,
+        suggestions: [
+          { text: 'Я', language: 'ru', note: 'Cyrillic' },
+          { text: 'ya', language: 'slang', note: 'Chill tone' },
+          { text: 'I', language: 'en', note: 'Switch to English' },
+          { text: 'yaaa 🤟', language: 'emoji', note: 'Emoji flair' }
+        ]
+      },
+      {
+        trigger: /^im$/i,
+        suggestions: [
+          { text: "I'm", language: 'en', note: 'Standard' },
+          { text: 'Imma', language: 'slang', note: 'Slang/US' },
+          { text: 'Я', language: 'ru', note: 'Russian equivalent' },
+          { text: 'Saya', language: 'id', note: 'Bahasa' }
+        ]
+      },
+      {
+        trigger: /^priv/i,
+        suggestions: [
+          { text: 'Привет!', language: 'ru', note: 'Greeting' },
+          { text: 'Privet 🤗', language: 'emoji', note: 'Emoji mix' },
+          { text: 'Hey!', language: 'en', note: 'English tone' },
+          { text: 'Halo!', language: 'id', note: 'Bahasa casual' }
+        ]
+      },
+      {
+        trigger: /^wass?$/i,
+        suggestions: [
+          { text: "What's up?", language: 'en', note: 'Standard' },
+          { text: 'Wassup!', language: 'slang', note: 'Slang' },
+          { text: 'Как ты?', language: 'ru', note: 'Russian tone' },
+          { text: 'Apa kabar?', language: 'id', note: 'Bahasa formal' }
+        ]
+      },
+      {
+        trigger: /^ty$/i,
+        suggestions: [
+          { text: 'ты', language: 'ru', note: 'Informal you' },
+          { text: 'tu', language: 'slang', note: 'Spanglish vibe' },
+          { text: 'you', language: 'en', note: 'English direct' },
+          { text: 'kamu', language: 'id', note: 'Bahasa neutral' }
+        ]
+      }
+    ];
+
+    const DEFAULT_SUGGESTIONS = [
+      { text: 'Yu', language: 'slang', note: 'Slang' },
+      { text: "I’m", language: 'en', note: 'English' },
+      { text: 'Ты', language: 'ru', note: 'Cyrillic' },
+      { text: 'Imma', language: 'slang', note: 'Informal' }
+    ];
+
+    let currentMode = 'balanced';
+    let genieEnabled = true;
+    let doubleTapTimeout = null;
+
+    function updateModeFromSlider(value) {
+      if (value <= 33) {
+        currentMode = 'passive';
+      } else if (value >= 67) {
+        currentMode = 'aggressive';
+      } else {
+        currentMode = 'balanced';
+      }
+      const copy = MODE_COPY[currentMode];
+      modeLabel.textContent = copy.label;
+      modeDescriptor.textContent = copy.descriptor;
+      modeBanner.dataset.mode = copy.bannerMode;
+      modeMessage.textContent = copy.banner;
+    }
+
+    function renderSuggestions(triggerWord = '') {
+      const libraryEntry = suggestionLibrary.find(entry => entry.trigger.test(triggerWord));
+      const suggestions = libraryEntry ? entryWithModeOverrides(libraryEntry.suggestions) : entryWithModeOverrides(DEFAULT_SUGGESTIONS);
+
+      suggestionBar.innerHTML = suggestions.map((suggestion, index) => `
+        <button class="chip" data-language="${suggestion.language}" data-index="${index}" type="button">
+          ${suggestion.text}
+          <span class="language-tag">${suggestionTag(suggestion.language)}</span>
+        </button>
+      `).join('');
+    }
+
+    function suggestionTag(language) {
+      switch (language) {
+        case 'en': return 'EN';
+        case 'ru': return 'РУ';
+        case 'id': return 'ID';
+        case 'slang': return 'SL';
+        case 'emoji': return '🙂';
+        default: return language.toUpperCase();
+      }
+    }
+
+    function entryWithModeOverrides(suggestions) {
+      if (!genieEnabled) return suggestions;
+      if (currentMode === 'aggressive') {
+        return [suggestions[0], suggestions[1], suggestions[2], suggestions[3]];
+      }
+      if (currentMode === 'passive') {
+        return suggestions.map((item, index) => index === 0 ? { ...item, text: item.text + ' • tap to apply' } : item);
+      }
+      return suggestions;
+    }
+
+    function applySuggestion(text) {
+      const words = composer.value.trimEnd().split(/\s+/);
+      words.pop();
+      words.push(text);
+      composer.value = words.join(' ') + ' ';
+      composer.focus();
+    }
+
+    genieButton.addEventListener('click', () => {
+      if (doubleTapTimeout !== null) {
+        // Already waiting for possible double tap; do nothing here
+        return;
+      }
+      doubleTapTimeout = setTimeout(() => {
+        toggleGenie();
+        clearTimeout(doubleTapTimeout);
+        doubleTapTimeout = null;
+      }, 220);
+    });
+
+    genieButton.addEventListener('dblclick', () => {
+      clearTimeout(doubleTapTimeout);
+      doubleTapTimeout = null;
+      toggleOverlay(true);
+    });
+
+    closeOverlay.addEventListener('click', () => toggleOverlay(false));
+
+    function toggleOverlay(show) {
+      overlay.classList.toggle('visible', show);
+      overlay.setAttribute('aria-hidden', String(!show));
+    }
+
+    function toggleGenie() {
+      genieEnabled = !genieEnabled;
+      genieButton.classList.toggle('inactive', !genieEnabled);
+      genieState.textContent = genieEnabled ? 'Active' : 'Off';
+      modeBanner.style.display = genieEnabled ? 'flex' : 'none';
+      suggestionBar.classList.toggle('muted', !genieEnabled);
+      renderSuggestions(currentTrigger());
+    }
+
+    overrideSlider.addEventListener('input', (event) => {
+      updateModeFromSlider(Number(event.target.value));
+      renderSuggestions(currentTrigger());
+    });
+
+    function currentTrigger() {
+      const words = composer.value.trim().split(/\s+/);
+      return words[words.length - 1] || '';
+    }
+
+    composer.addEventListener('input', () => {
+      const trigger = currentTrigger();
+      renderSuggestions(trigger);
+      if (genieEnabled && currentMode === 'aggressive') {
+        const libraryEntry = suggestionLibrary.find(entry => entry.trigger.test(trigger));
+        if (libraryEntry) {
+          // Auto apply first suggestion as override
+          const firstSuggestion = libraryEntry.suggestions[0];
+          applySuggestion(firstSuggestion.text);
+          modeMessage.textContent = 'Genie auto-upgraded your phrase for tone.';
+          setTimeout(() => {
+            modeMessage.textContent = MODE_COPY[currentMode].banner;
+          }, 1800);
+        }
+      }
+    });
+
+    suggestionBar.addEventListener('click', (event) => {
+      const chip = event.target.closest('.chip');
+      if (!chip) return;
+      const trigger = currentTrigger();
+      const libraryEntry = suggestionLibrary.find(entry => entry.trigger.test(trigger));
+      const suggestions = libraryEntry ? libraryEntry.suggestions : DEFAULT_SUGGESTIONS;
+      const selected = suggestions[Number(chip.dataset.index)];
+      applySuggestion(selected.text);
+      if (currentMode === 'passive') {
+        modeMessage.textContent = 'Inserted manually. Genie stayed passive.';
+      } else {
+        modeMessage.textContent = `Applied ${suggestionTag(selected.language)} suggestion.`;
+      }
+      setTimeout(() => {
+        modeMessage.textContent = MODE_COPY[currentMode].banner;
+      }, 1600);
+    });
+
+    // Initialize
+    updateModeFromSlider(Number(overrideSlider.value));
+    renderSuggestions();
+
+    // Accessibility: close overlay on outside tap
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) {
+        toggleOverlay(false);
+      }
+    });
+  </script>
+</body>
+</html>
+
