@@ -288,39 +288,88 @@
   </div>
 
   <script>
+    const API_BASE_URL = 'http://localhost:8000/api';
     const controlComposer = document.getElementById('controlComposer');
     const controlSuggestions = document.getElementById('controlSuggestions');
 
-    const controlLibrary = [
-      {
-        trigger: /^im$/i,
-        options: ['I am', "I'm", 'Im']
-      },
-      {
-        trigger: /^u$/i,
-        options: ['you', 'u', 'yu']
-      },
-      {
-        trigger: /^kak$/i,
-        options: ['kak', 'kay', 'kay?']
-      }
+    const FALLBACK_OPTIONS = [
+      { pattern: /^im$/i, options: ['I am', "I'm", 'Im'] },
+      { pattern: /^u$/i, options: ['you', 'u', 'yu'] },
+      { pattern: /^kak$/i, options: ['kak', 'kay', 'kay?'] }
     ];
+    const DEFAULT_OPTIONS = ['I am', "I'm", 'Im'];
 
-    const defaultOptions = ['I am', "I’m", 'Im'];
+    let debounceTimer = null;
+    let inFlight = null;
+    let currentOptions = DEFAULT_OPTIONS.slice();
 
-    function renderControlSuggestions() {
-      const word = currentWord();
-      const match = controlLibrary.find(entry => entry.trigger.test(word));
-      const options = match ? entry.options : defaultOptions;
+    function currentWord() {
+      const words = controlComposer.value.trim().split(/\s+/);
+      return words[words.length - 1] || '';
+    }
 
+    function fallbackSuggestions(word) {
+      const entry = FALLBACK_OPTIONS.find((item) => item.pattern.test(word));
+      return (entry ? entry.options : DEFAULT_OPTIONS).slice();
+    }
+
+    function renderControlSuggestions(options) {
+      currentOptions = options;
       controlSuggestions.innerHTML = options.map((text, index) => `
         <div class="suggestion ${index === 0 ? 'primary' : ''}" data-index="${index}">${text}</div>
       `).join('');
     }
 
-    function currentWord() {
-      const words = controlComposer.value.trim().split(/\s+/);
-      return words[words.length - 1] || '';
+    function cancelInFlight() {
+      if (inFlight) {
+        inFlight.abort();
+        inFlight = null;
+      }
+    }
+
+    async function fetchSuggestions() {
+      cancelInFlight();
+      const controller = new AbortController();
+      inFlight = controller;
+      const cursorWord = currentWord();
+      const body = {
+        text: controlComposer.value,
+        cursorWord
+      };
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/control/suggest`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!controller.signal.aborted) {
+          const suggestions = (data.suggestions || []).map((item) => item.text).slice(0, 3);
+          renderControlSuggestions(suggestions.length ? suggestions : fallbackSuggestions(cursorWord));
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          renderControlSuggestions(fallbackSuggestions(cursorWord));
+        }
+      } finally {
+        if (inFlight === controller) {
+          inFlight = null;
+        }
+      }
+    }
+
+    function scheduleFetch() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(fetchSuggestions, 180);
     }
 
     function applyOption(text) {
@@ -329,19 +378,23 @@
       words.push(text);
       controlComposer.value = words.join(' ') + ' ';
       controlComposer.focus();
-      renderControlSuggestions();
+      scheduleFetch();
     }
 
-    controlComposer.addEventListener('input', renderControlSuggestions);
+    controlComposer.addEventListener('input', scheduleFetch);
 
     controlSuggestions.addEventListener('click', (event) => {
       const option = event.target.closest('.suggestion');
       if (!option) return;
-      applyOption(option.textContent);
+      const index = Number(option.dataset.index);
+      const choice = currentOptions[index];
+      if (choice) {
+        applyOption(choice);
+      }
     });
 
-    renderControlSuggestions();
+    renderControlSuggestions(currentOptions);
+    scheduleFetch();
   </script>
 </body>
 </html>
-

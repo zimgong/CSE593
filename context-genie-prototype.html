@@ -166,6 +166,11 @@
       box-shadow: 0 6px 12px -8px rgba(17, 24, 39, 0.3);
     }
 
+    .chip.auto {
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.16), rgba(99, 102, 241, 0.12));
+      border-color: rgba(124, 58, 237, 0.32);
+    }
+
     .chip[data-language="en"] {
       background: rgba(99, 102, 241, 0.12);
       border-color: rgba(99, 102, 241, 0.24);
@@ -461,6 +466,59 @@
       border: 1px solid rgba(255, 255, 255, 0.18);
     }
 
+    .input-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.85);
+      margin-bottom: 8px;
+      letter-spacing: 0.02em;
+    }
+
+    .input-label span {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.45);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .api-key-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .api-key-row input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: none;
+      background: rgba(255, 255, 255, 0.12);
+      color: white;
+      font-size: 14px;
+    }
+
+    .api-key-row input::placeholder {
+      color: rgba(255, 255, 255, 0.35);
+    }
+
+    .api-key-row button {
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      background: rgba(124, 58, 237, 0.85);
+      color: white;
+      letter-spacing: 0.02em;
+    }
+
+    .api-key-row button.secondary {
+      background: rgba(255, 255, 255, 0.16);
+      color: rgba(255, 255, 255, 0.85);
+    }
+
     .status-banner {
       display: flex;
       align-items: center;
@@ -500,6 +558,12 @@
       font-size: 12px;
       color: rgba(255, 255, 255, 0.68);
       line-height: 1.5;
+    }
+
+    .api-status {
+      margin-top: 6px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.55);
     }
 
     footer {
@@ -632,6 +696,20 @@
           </div>
         </div>
 
+        <div>
+          <h3 style="margin: 16px 0 10px; font-size: 15px; letter-spacing: 0.02em;">LLM Connector</h3>
+          <label class="input-label" for="apiKeyInput">
+            API Key
+            <span>optional</span>
+          </label>
+          <div class="api-key-row">
+            <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off">
+            <button id="saveApiKey">Save</button>
+            <button id="clearApiKey" class="secondary">Clear</button>
+          </div>
+          <p class="microcopy api-status" id="apiKeyStatus">Stored locally in this browser. Sent with each request only when populated.</p>
+        </div>
+
         <div class="microcopy">
           Genie uses local context + recipient profile + on-device LLM priors.
           In aggressive mode Genie can override your draft; in passive mode it never changes your text without a tap.
@@ -641,17 +719,13 @@
   </div>
 
   <script>
-    const genieButton = document.getElementById('genieButton');
-    const genieState = document.getElementById('genieState');
-    const overlay = document.getElementById('genieOverlay');
-    const closeOverlay = document.getElementById('closeOverlay');
-    const overrideSlider = document.getElementById('overrideSlider');
-    const modeLabel = document.getElementById('modeLabel');
-    const modeDescriptor = document.getElementById('modeDescriptor');
-    const modeBanner = document.getElementById('modeBanner');
-    const modeMessage = document.getElementById('modeMessage');
-    const composer = document.getElementById('composer');
-    const suggestionBar = document.getElementById('suggestionBar');
+    const API_BASE_URL = 'http://localhost:8000/api';
+    const conversationContext = [
+      "Hey! Let’s keep it casual in English but I’ll try some Russian phrases.",
+      "Sounds good! I'll sprinkle in some slang too.",
+      "Как дела? Need anything from the store?"
+    ];
+    const languagePreferences = ['en', 'ru', 'id', 'slang'];
 
     const MODE_COPY = {
       passive: {
@@ -674,134 +748,370 @@
       }
     };
 
-    const suggestionLibrary = [
+    const FALLBACK_LIBRARY = [
       {
-        trigger: /^k(?:ak|ak|ag)$/i,
+        pattern: /^k(?:ak|ag)/i,
         suggestions: [
-          { text: 'Как дела?', language: 'ru', note: 'LLM • Russian' },
-          { text: 'Kak dilá?', language: 'id', note: 'LLM • Bahasa slang' },
-          { text: 'Как ты?', language: 'ru', note: 'LLM • Russian' },
-          { text: 'Kak are you?', language: 'slang', note: 'LLM remix' }
+          { text: 'Как дела?', language: 'ru', label: 'RU', explanation: 'Standard Cyrillic greeting in Russian.', confidence: 0.82 },
+          { text: 'Kak dilá?', language: 'id', label: 'ID', explanation: 'Bahasa slang spelling preserving intent.', confidence: 0.58 },
+          { text: 'Как ты?', language: 'ru', label: 'RU', explanation: 'Alternative Russian phrasing for familiarity.', confidence: 0.7 },
+          { text: 'Kak are you?', language: 'mix', label: 'Mix', explanation: 'Playful code-mixed option.', confidence: 0.52 }
         ]
       },
       {
-        trigger: /^ya$/i,
+        pattern: /^priv/i,
         suggestions: [
-          { text: 'Я', language: 'ru', note: 'Cyrillic' },
-          { text: 'ya', language: 'slang', note: 'Chill tone' },
-          { text: 'I', language: 'en', note: 'Switch to English' },
-          { text: 'yaaa 🤟', language: 'emoji', note: 'Emoji flair' }
+          { text: 'Привет!', language: 'ru', label: 'RU', explanation: 'Primary greeting in Russian.', confidence: 0.86 },
+          { text: 'Privet 🤗', language: 'emoji', label: '🙂', explanation: 'Adds emoji flair while staying informal.', confidence: 0.64 },
+          { text: 'Hey!', language: 'en', label: 'EN', explanation: 'Switch back to English tone.', confidence: 0.62 },
+          { text: 'Halo!', language: 'id', label: 'ID', explanation: 'Indonesian casual greeting.', confidence: 0.55 }
         ]
       },
       {
-        trigger: /^im$/i,
+        pattern: /^im/i,
         suggestions: [
-          { text: "I'm", language: 'en', note: 'Standard' },
-          { text: 'Imma', language: 'slang', note: 'Slang/US' },
-          { text: 'Я', language: 'ru', note: 'Russian equivalent' },
-          { text: 'Saya', language: 'id', note: 'Bahasa' }
+          { text: "I'm", language: 'en', label: 'EN', explanation: 'Standard English contraction.', confidence: 0.92 },
+          { text: 'Imma', language: 'slang', label: 'SL', explanation: 'US slang contraction for informal plans.', confidence: 0.7 },
+          { text: 'Я', language: 'ru', label: 'RU', explanation: 'Russian equivalent in Cyrillic.', confidence: 0.74 },
+          { text: 'Saya', language: 'id', label: 'ID', explanation: 'Neutral Bahasa Indonesian pronoun.', confidence: 0.66 }
         ]
       },
       {
-        trigger: /^priv/i,
+        pattern: /^ya$/i,
         suggestions: [
-          { text: 'Привет!', language: 'ru', note: 'Greeting' },
-          { text: 'Privet 🤗', language: 'emoji', note: 'Emoji mix' },
-          { text: 'Hey!', language: 'en', note: 'English tone' },
-          { text: 'Halo!', language: 'id', note: 'Bahasa casual' }
+          { text: 'Я', language: 'ru', label: 'RU', explanation: 'Switches to Cyrillic for Russian.', confidence: 0.78 },
+          { text: 'ya', language: 'slang', label: 'SL', explanation: 'Keeps informal Latin transliteration.', confidence: 0.6 },
+          { text: 'I', language: 'en', label: 'EN', explanation: 'Reverts to neutral English tone.', confidence: 0.58 },
+          { text: 'yaaa 🤟', language: 'emoji', label: '🙂', explanation: 'Stylized slang variant with emoji.', confidence: 0.5 }
         ]
       },
       {
-        trigger: /^wass?$/i,
+        pattern: /^wass?/i,
         suggestions: [
-          { text: "What's up?", language: 'en', note: 'Standard' },
-          { text: 'Wassup!', language: 'slang', note: 'Slang' },
-          { text: 'Как ты?', language: 'ru', note: 'Russian tone' },
-          { text: 'Apa kabar?', language: 'id', note: 'Bahasa formal' }
+          { text: "What's up?", language: 'en', label: 'EN', explanation: 'Standard English autocorrect.', confidence: 0.88 },
+          { text: 'Wassup!', language: 'slang', label: 'SL', explanation: 'Friendly slang alternative.', confidence: 0.73 },
+          { text: 'Как ты?', language: 'ru', label: 'RU', explanation: 'Switches tone to Russian informal.', confidence: 0.68 },
+          { text: 'Apa kabar?', language: 'id', label: 'ID', explanation: 'Formal Bahasa greeting.', confidence: 0.6 }
         ]
       },
       {
-        trigger: /^ty$/i,
+        pattern: /^ty$/i,
         suggestions: [
-          { text: 'ты', language: 'ru', note: 'Informal you' },
-          { text: 'tu', language: 'slang', note: 'Spanglish vibe' },
-          { text: 'you', language: 'en', note: 'English direct' },
-          { text: 'kamu', language: 'id', note: 'Bahasa neutral' }
+          { text: 'ты', language: 'ru', label: 'RU', explanation: 'Informal Russian “you”.', confidence: 0.72 },
+          { text: 'tu', language: 'slang', label: 'Mix', explanation: 'Spanglish style mix.', confidence: 0.54 },
+          { text: 'you', language: 'en', label: 'EN', explanation: 'Standard English correction.', confidence: 0.76 },
+          { text: 'kamu', language: 'id', label: 'ID', explanation: 'Neutral Bahasa Indonesian address.', confidence: 0.6 }
         ]
       }
     ];
 
-    const DEFAULT_SUGGESTIONS = [
-      { text: 'Yu', language: 'slang', note: 'Slang' },
-      { text: "I’m", language: 'en', note: 'English' },
-      { text: 'Ты', language: 'ru', note: 'Cyrillic' },
-      { text: 'Imma', language: 'slang', note: 'Informal' }
+    const FALLBACK_DEFAULT = [
+      { text: 'Yu', language: 'slang', label: 'SL', explanation: 'Keeping relaxed tone for close friends.', confidence: 0.55 },
+      { text: "I'm", language: 'en', label: 'EN', explanation: 'Standard English correction.', confidence: 0.9 },
+      { text: 'Ты', language: 'ru', label: 'RU', explanation: 'Cyrillic alternative using capitalized form.', confidence: 0.7 },
+      { text: 'Imma', language: 'slang', label: 'SL', explanation: 'US slang contraction for informal plans.', confidence: 0.65 }
     ];
 
-    let currentMode = 'balanced';
-    let genieEnabled = true;
+    const genieButton = document.getElementById('genieButton');
+    const genieStateLabel = document.getElementById('genieState');
+    const overlay = document.getElementById('genieOverlay');
+    const closeOverlay = document.getElementById('closeOverlay');
+    const overrideSlider = document.getElementById('overrideSlider');
+    const modeLabel = document.getElementById('modeLabel');
+    const modeDescriptor = document.getElementById('modeDescriptor');
+    const modeBanner = document.getElementById('modeBanner');
+    const modeMessage = document.getElementById('modeMessage');
+    const composer = document.getElementById('composer');
+    const suggestionBar = document.getElementById('suggestionBar');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const saveApiKeyButton = document.getElementById('saveApiKey');
+    const clearApiKeyButton = document.getElementById('clearApiKey');
+    const apiKeyStatus = document.getElementById('apiKeyStatus');
+
+    const genieState = {
+      enabled: true,
+      mode: 'balanced',
+      apiKey: loadApiKey(),
+      debounceTimer: null,
+      inFlight: null,
+      lastAutoOverride: '',
+      suppressInput: false,
+      fallbackActive: false
+    };
+
     let doubleTapTimeout = null;
+    let bannerTimeout = null;
+    let currentSuggestions = FALLBACK_DEFAULT.map(cloneSuggestion);
 
-    function updateModeFromSlider(value) {
-      if (value <= 33) {
-        currentMode = 'passive';
-      } else if (value >= 67) {
-        currentMode = 'aggressive';
-      } else {
-        currentMode = 'balanced';
-      }
-      const copy = MODE_COPY[currentMode];
-      modeLabel.textContent = copy.label;
-      modeDescriptor.textContent = copy.descriptor;
-      modeBanner.dataset.mode = copy.bannerMode;
-      modeMessage.textContent = copy.banner;
+    function loadApiKey() {
+      return localStorage.getItem('contextGenieApiKey') || '';
     }
 
-    function renderSuggestions(triggerWord = '') {
-      const libraryEntry = suggestionLibrary.find(entry => entry.trigger.test(triggerWord));
-      const suggestions = libraryEntry ? entryWithModeOverrides(libraryEntry.suggestions) : entryWithModeOverrides(DEFAULT_SUGGESTIONS);
+    function persistApiKey(value) {
+      if (value) {
+        localStorage.setItem('contextGenieApiKey', value);
+      } else {
+        localStorage.removeItem('contextGenieApiKey');
+      }
+    }
 
+    function cloneSuggestion(item) {
+      return {
+        text: item.text,
+        language: item.language,
+        label: item.label || (item.language || '').toUpperCase(),
+        explanation: item.explanation || '',
+        autoApply: Boolean(item.autoApply),
+        confidence: typeof item.confidence === 'number' ? item.confidence : 0.6
+      };
+    }
+
+    function escapeHtml(value) {
+      return (value || '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[char]);
+    }
+
+    function offlineSuggestions(word) {
+      if (!word) {
+        return FALLBACK_DEFAULT.map(cloneSuggestion);
+      }
+      const entry = FALLBACK_LIBRARY.find((item) => item.pattern.test(word));
+      const suggestions = entry ? entry.suggestions : FALLBACK_DEFAULT;
+      return suggestions.map(cloneSuggestion);
+    }
+
+    function renderSuggestionChips(suggestions) {
+      currentSuggestions = suggestions;
+      if (!suggestions.length) {
+        suggestionBar.innerHTML = '<span class="microcopy" style="grid-column:1 / -1;text-align:center;">No suggestions</span>';
+        return;
+      }
       suggestionBar.innerHTML = suggestions.map((suggestion, index) => `
-        <button class="chip" data-language="${suggestion.language}" data-index="${index}" type="button">
-          ${suggestion.text}
-          <span class="language-tag">${suggestionTag(suggestion.language)}</span>
+        <button class="chip ${suggestion.autoApply ? 'auto' : ''}" data-language="${suggestion.language}" data-index="${index}" type="button" title="${escapeHtml(suggestion.explanation)}">
+          ${escapeHtml(suggestion.text)}
+          <span class="language-tag">${escapeHtml(suggestion.label)}</span>
         </button>
       `).join('');
     }
 
-    function suggestionTag(language) {
-      switch (language) {
-        case 'en': return 'EN';
-        case 'ru': return 'РУ';
-        case 'id': return 'ID';
-        case 'slang': return 'SL';
-        case 'emoji': return '🙂';
-        default: return language.toUpperCase();
+    function refreshModeBanner() {
+      clearTimeout(bannerTimeout);
+      const copy = MODE_COPY[genieState.mode];
+      modeBanner.dataset.mode = copy.bannerMode;
+      modeMessage.textContent = copy.banner;
+    }
+
+    function setBannerMessage(message, { persist = false, duration = 2200 } = {}) {
+      clearTimeout(bannerTimeout);
+      modeMessage.textContent = message;
+      if (!persist) {
+        bannerTimeout = setTimeout(refreshModeBanner, duration);
       }
     }
 
-    function entryWithModeOverrides(suggestions) {
-      if (!genieEnabled) return suggestions;
-      if (currentMode === 'aggressive') {
-        return [suggestions[0], suggestions[1], suggestions[2], suggestions[3]];
+    function handleSuggestionsResponse(payload, { isFallback = false } = {}) {
+      genieState.fallbackActive = isFallback;
+      const suggestions = (payload.suggestions || []).map((item) => ({
+        text: item.text,
+        language: item.language,
+        label: item.label || (item.language || '').toUpperCase(),
+        explanation: item.explanation || '',
+        autoApply: Boolean(item.autoApply),
+        confidence: typeof item.confidence === 'number' ? item.confidence : 0.6
+      }));
+
+      if (!genieState.enabled || genieState.mode !== 'aggressive') {
+        suggestions.forEach((suggestion) => {
+          suggestion.autoApply = false;
+        });
       }
-      if (currentMode === 'passive') {
-        return suggestions.map((item, index) => index === 0 ? { ...item, text: item.text + ' • tap to apply' } : item);
+
+      let autoOverride = null;
+      if (genieState.enabled && genieState.mode === 'aggressive' && suggestions[0]?.autoApply) {
+        autoOverride = suggestions[0].text;
       }
-      return suggestions;
+      if (genieState.enabled && genieState.mode === 'aggressive' && payload.autoOverride) {
+        autoOverride = payload.autoOverride;
+        if (suggestions[0]) {
+          suggestions[0].autoApply = true;
+        }
+      }
+
+      renderSuggestionChips(suggestions);
+
+      if (isFallback) {
+        setBannerMessage('Genie offline – using on-device heuristics.', { duration: 2600 });
+      } else if (payload.usedLLM && genieState.apiKey) {
+        setBannerMessage('Genie used your API key for this set.', { duration: 2500 });
+      } else {
+        refreshModeBanner();
+      }
+
+      if (
+        autoOverride &&
+        autoOverride !== genieState.lastAutoOverride &&
+        genieState.mode === 'aggressive'
+      ) {
+        genieState.lastAutoOverride = autoOverride;
+        applySuggestionText(autoOverride, { source: 'auto' });
+        setBannerMessage('Genie auto-upgraded your phrase for tone.', { duration: 2300 });
+      }
     }
 
-    function applySuggestion(text) {
-      const words = composer.value.trimEnd().split(/\s+/);
-      words.pop();
-      words.push(text);
+    function getCursorWord() {
+      const cursor = composer.selectionStart ?? composer.value.length;
+      const text = composer.value.slice(0, cursor);
+      const match = text.match(/([\p{L}\p{N}'’\-]+)$/u);
+      return match ? match[0] : '';
+    }
+
+    function cancelInFlight() {
+      if (genieState.inFlight) {
+        genieState.inFlight.abort();
+        genieState.inFlight = null;
+      }
+    }
+
+    async function requestSuggestions() {
+      if (!genieState.enabled) {
+        renderSuggestionChips(offlineSuggestions(getCursorWord()));
+        return;
+      }
+
+      cancelInFlight();
+      const controller = new AbortController();
+      genieState.inFlight = controller;
+      const cursorWord = getCursorWord();
+      const body = {
+        text: composer.value,
+        cursorWord,
+        mode: genieState.mode,
+        conversation: conversationContext,
+        languagePreferences
+      };
+      if (genieState.apiKey) {
+        body.apiKey = genieState.apiKey;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/context-genie/suggest`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        if (!controller.signal.aborted) {
+          handleSuggestionsResponse(data, { isFallback: false });
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          const fallbackPayload = {
+            usedLLM: false,
+            suggestions: offlineSuggestions(cursorWord),
+            autoOverride: null
+          };
+          handleSuggestionsResponse(fallbackPayload, { isFallback: true });
+        }
+      } finally {
+        if (genieState.inFlight === controller) {
+          genieState.inFlight = null;
+        }
+      }
+    }
+
+    function scheduleSuggestionFetch() {
+      clearTimeout(genieState.debounceTimer);
+      genieState.debounceTimer = setTimeout(requestSuggestions, 220);
+    }
+
+    function placeCursorAtEnd() {
+      const position = composer.value.length;
+      composer.setSelectionRange(position, position);
+    }
+
+    function applySuggestionText(text, { source = 'chip', suggestion = null } = {}) {
+      const trimmed = composer.value.trimEnd();
+      const words = trimmed ? trimmed.split(/\s+/) : [];
+      if (words.length === 0) {
+        words.push(text);
+      } else {
+        words[words.length - 1] = text;
+      }
+      genieState.suppressInput = true;
       composer.value = words.join(' ') + ' ';
-      composer.focus();
+      placeCursorAtEnd();
+      genieState.suppressInput = false;
+
+      if (source === 'chip' && suggestion) {
+        setBannerMessage(`Applied ${suggestion.label} suggestion.`);
+      }
+      if (source === 'auto') {
+        scheduleSuggestionFetch();
+      }
+    }
+
+    function toggleGenie() {
+      genieState.enabled = !genieState.enabled;
+      genieButton.classList.toggle('inactive', !genieState.enabled);
+      genieStateLabel.textContent = genieState.enabled ? 'Active' : 'Off';
+      modeBanner.style.display = genieState.enabled ? 'flex' : 'none';
+      if (genieState.enabled) {
+        refreshModeBanner();
+        scheduleSuggestionFetch();
+      } else {
+        cancelInFlight();
+        setBannerMessage('Genie paused. Suggestions frozen.', { duration: 2200 });
+      }
+    }
+
+    function updateModeFromSlider(value) {
+      const previousMode = genieState.mode;
+      if (value <= 33) {
+        genieState.mode = 'passive';
+      } else if (value >= 67) {
+        genieState.mode = 'aggressive';
+      } else {
+        genieState.mode = 'balanced';
+      }
+
+      const copy = MODE_COPY[genieState.mode];
+      modeLabel.textContent = copy.label;
+      modeDescriptor.textContent = copy.descriptor;
+      modeBanner.dataset.mode = copy.bannerMode;
+
+      if (previousMode !== genieState.mode) {
+        genieState.lastAutoOverride = '';
+        if (genieState.enabled) {
+          scheduleSuggestionFetch();
+        } else {
+          refreshModeBanner();
+        }
+      } else {
+        refreshModeBanner();
+      }
+    }
+
+    function updateApiKeyUI() {
+      apiKeyInput.value = genieState.apiKey;
+      apiKeyStatus.textContent = genieState.apiKey
+        ? 'Using stored key for LLM calls (never logged).'
+        : 'No key set. Backend will fall back to heuristics.';
     }
 
     genieButton.addEventListener('click', () => {
       if (doubleTapTimeout !== null) {
-        // Already waiting for possible double tap; do nothing here
         return;
       }
       doubleTapTimeout = setTimeout(() => {
@@ -817,78 +1127,68 @@
       toggleOverlay(true);
     });
 
-    closeOverlay.addEventListener('click', () => toggleOverlay(false));
-
     function toggleOverlay(show) {
       overlay.classList.toggle('visible', show);
       overlay.setAttribute('aria-hidden', String(!show));
+      if (show) {
+        updateApiKeyUI();
+        setTimeout(() => apiKeyInput.focus({ preventScroll: true }), 120);
+      }
     }
 
-    function toggleGenie() {
-      genieEnabled = !genieEnabled;
-      genieButton.classList.toggle('inactive', !genieEnabled);
-      genieState.textContent = genieEnabled ? 'Active' : 'Off';
-      modeBanner.style.display = genieEnabled ? 'flex' : 'none';
-      suggestionBar.classList.toggle('muted', !genieEnabled);
-      renderSuggestions(currentTrigger());
-    }
+    closeOverlay.addEventListener('click', () => toggleOverlay(false));
 
     overrideSlider.addEventListener('input', (event) => {
       updateModeFromSlider(Number(event.target.value));
-      renderSuggestions(currentTrigger());
     });
 
-    function currentTrigger() {
-      const words = composer.value.trim().split(/\s+/);
-      return words[words.length - 1] || '';
-    }
-
     composer.addEventListener('input', () => {
-      const trigger = currentTrigger();
-      renderSuggestions(trigger);
-      if (genieEnabled && currentMode === 'aggressive') {
-        const libraryEntry = suggestionLibrary.find(entry => entry.trigger.test(trigger));
-        if (libraryEntry) {
-          // Auto apply first suggestion as override
-          const firstSuggestion = libraryEntry.suggestions[0];
-          applySuggestion(firstSuggestion.text);
-          modeMessage.textContent = 'Genie auto-upgraded your phrase for tone.';
-          setTimeout(() => {
-            modeMessage.textContent = MODE_COPY[currentMode].banner;
-          }, 1800);
-        }
+      if (genieState.suppressInput) {
+        return;
+      }
+      genieState.lastAutoOverride = '';
+      if (genieState.enabled) {
+        scheduleSuggestionFetch();
+      } else {
+        renderSuggestionChips(offlineSuggestions(getCursorWord()));
       }
     });
 
     suggestionBar.addEventListener('click', (event) => {
       const chip = event.target.closest('.chip');
       if (!chip) return;
-      const trigger = currentTrigger();
-      const libraryEntry = suggestionLibrary.find(entry => entry.trigger.test(trigger));
-      const suggestions = libraryEntry ? libraryEntry.suggestions : DEFAULT_SUGGESTIONS;
-      const selected = suggestions[Number(chip.dataset.index)];
-      applySuggestion(selected.text);
-      if (currentMode === 'passive') {
-        modeMessage.textContent = 'Inserted manually. Genie stayed passive.';
-      } else {
-        modeMessage.textContent = `Applied ${suggestionTag(selected.language)} suggestion.`;
-      }
-      setTimeout(() => {
-        modeMessage.textContent = MODE_COPY[currentMode].banner;
-      }, 1600);
+      const suggestion = currentSuggestions[Number(chip.dataset.index)];
+      if (!suggestion) return;
+      applySuggestionText(suggestion.text, { source: 'chip', suggestion });
     });
 
-    // Initialize
-    updateModeFromSlider(Number(overrideSlider.value));
-    renderSuggestions();
+    saveApiKeyButton.addEventListener('click', () => {
+      const value = apiKeyInput.value.trim();
+      genieState.apiKey = value;
+      persistApiKey(value);
+      updateApiKeyUI();
+      setBannerMessage('API key saved locally.', { duration: 2000 });
+    });
 
-    // Accessibility: close overlay on outside tap
+    clearApiKeyButton.addEventListener('click', () => {
+      genieState.apiKey = '';
+      persistApiKey('');
+      apiKeyInput.value = '';
+      updateApiKeyUI();
+      setBannerMessage('API key cleared.', { duration: 2000 });
+    });
+
     overlay.addEventListener('click', (event) => {
       if (event.target === overlay) {
         toggleOverlay(false);
       }
     });
+
+    // Kick off initial render
+    updateModeFromSlider(Number(overrideSlider.value));
+    refreshModeBanner();
+    renderSuggestionChips(offlineSuggestions(''));
+    scheduleSuggestionFetch();
   </script>
 </body>
 </html>
-
