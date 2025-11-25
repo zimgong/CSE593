@@ -18,9 +18,9 @@
       --accent: #7c3aed;
       --accent-dark: #5b21b6;
       --danger: #ef4444;
-      --passive: #4c51bf;
+      --Weak: #4c51bf;
       --balanced: #059669;
-      --aggressive: #ef4444;
+      --Strong: #ef4444;
       --keyboard-key: #f5f7fb;
       --keyboard-border: #d9deef;
     }
@@ -402,6 +402,7 @@
 
     .slider-track input[type="range"] {
       width: 100%;
+      appearance: none;
       -webkit-appearance: none;
       height: 6px;
       border-radius: 999px;
@@ -438,7 +439,7 @@
       letter-spacing: 0.08em;
     }
 
-    .accent-passive {
+    .accent-Weak {
       color: #cbd5f5;
     }
 
@@ -446,7 +447,7 @@
       color: #bbf7d0;
     }
 
-    .accent-aggressive {
+    .accent-Strong {
       color: #fecaca;
     }
 
@@ -531,7 +532,7 @@
       font-weight: 500;
     }
 
-    .status-banner[data-mode="passive"] {
+    .status-banner[data-mode="Weak"] {
       background: rgba(76, 81, 191, 0.14);
       color: #312e81;
     }
@@ -541,7 +542,7 @@
       color: #064e3b;
     }
 
-    .status-banner[data-mode="aggressive"] {
+    .status-banner[data-mode="Strong"] {
       background: rgba(239, 68, 68, 0.12);
       color: #7f1d1d;
     }
@@ -680,9 +681,9 @@
             <input type="range" id="overrideSlider" min="0" max="100" value="55">
           </div>
           <div class="slider-badges">
-            <span class="accent-passive">Passive</span>
+            <span class="accent-Weak">Weak</span>
             <span class="accent-balanced">Balanced</span>
-            <span class="accent-aggressive">Aggressive</span>
+            <span class="accent-Strong">Strong</span>
           </div>
         </div>
 
@@ -712,7 +713,7 @@
 
         <div class="microcopy">
           Genie uses local context + recipient profile + on-device LLM priors.
-          In aggressive mode Genie can override your draft; in passive mode it never changes your text without a tap.
+          In Strong mode Genie can override your draft; in Weak mode it never changes your text without a tap.
         </div>
       </div>
     </div>
@@ -728,11 +729,11 @@
     const languagePreferences = ['en', 'ru', 'id', 'slang'];
 
     const MODE_COPY = {
-      passive: {
+      Weak: {
         label: 'Listening Only',
         banner: 'Genie observing. Tap a chip to accept.',
         descriptor: 'Suggestions match tone but never change your draft.',
-        bannerMode: 'passive'
+        bannerMode: 'Weak'
       },
       balanced: {
         label: 'Balanced Guidance',
@@ -740,11 +741,11 @@
         descriptor: 'Genie keeps context aligned and prompts you at the right moments.',
         bannerMode: 'balanced'
       },
-      aggressive: {
+      Strong: {
         label: 'Turbo Rewrite',
         banner: 'Genie will auto-upgrade slang, tone, and language mid-phrase.',
         descriptor: 'Prioritizes seamless flow; overrides appear inline with undo support.',
-        bannerMode: 'aggressive'
+        bannerMode: 'Strong'
       }
     };
 
@@ -801,6 +802,78 @@
           { text: 'tu', language: 'slang', label: 'Mix', explanation: 'Spanglish style mix.', confidence: 0.54 },
           { text: 'you', language: 'en', label: 'EN', explanation: 'Standard English correction.', confidence: 0.76 },
           { text: 'kamu', language: 'id', label: 'ID', explanation: 'Neutral Bahasa Indonesian address.', confidence: 0.6 }
+        ]
+      },
+      {
+        pattern: /^ion\s?even\s?know/i,
+        suggestions: [
+          { text: 'fr', language: 'slang', label: 'SL', explanation: 'Affirms confusion with casual emphasis.', confidence: 0.64 },
+          { text: 'bro', language: 'slang', label: 'SL', explanation: 'Adds a familiar, informal tone.', confidence: 0.58 },
+          { text: 'what to say', language: 'slang', label: 'SL', explanation: 'Extends the uncertainty naturally.', confidence: 0.55 },
+          { text: 'for real tho', language: 'slang', label: 'SL', explanation: 'Strengthens the expression of not knowing.', confidence: 0.57 }
+        ]
+      },
+      {
+        pattern: /^no\s?cap/i,
+        suggestions: [
+          { text: 'that’s facts', language: 'slang', label: 'SL', explanation: 'Reinforces sincerity and truthfulness.', confidence: 0.68 },
+          { text: 'for real', language: 'slang', label: 'SL', explanation: 'Confirms honesty in a casual tone.', confidence: 0.64 },
+          { text: 'on god', language: 'slang', label: 'SL', explanation: 'Common intensifier paired with no cap.', confidence: 0.6 },
+          { text: 'i swear', language: 'slang', label: 'SL', explanation: 'Extends the claim of honesty.', confidence: 0.58 }
+        ]
+      },
+      {
+        pattern: /^bet$/i,
+        suggestions: [
+          { text: 'say less', language: 'slang', label: 'SL', explanation: 'Signals immediate agreement.', confidence: 0.7 },
+          { text: "i'm on it", language: 'slang', label: 'SL', explanation: 'Shows readiness to act.', confidence: 0.64 },
+          { text: 'for sure', language: 'slang', label: 'SL', explanation: 'Confirms agreement in casual tone.', confidence: 0.62 },
+          { text: 'we locked', language: 'slang', label: 'SL', explanation: 'Adds commitment to the agreement.', confidence: 0.6 }
+        ]
+      },
+      {
+        pattern: /^i'?m\sdead/i,
+        suggestions: [
+          { text: 'bro', language: 'slang', label: 'SL', explanation: 'Adds emphasis to expressive reaction.', confidence: 0.63 },
+          { text: 'this got me weak', language: 'slang', label: 'SL', explanation: 'Extends the humor-based reaction.', confidence: 0.66 },
+          { text: 'lmao fr', language: 'slang', label: 'SL', explanation: 'Strengthens the comedic response.', confidence: 0.61 },
+          { text: "i can't", language: 'slang', label: 'SL', explanation: 'Short expressive reaction to keep tone playful.', confidence: 0.58 }
+        ]
+      },
+      {
+        pattern: /^lowkey/i,
+        suggestions: [
+          { text: 'kinda', language: 'slang', label: 'SL', explanation: 'Softens or qualifies the statement.', confidence: 0.65 },
+          { text: 'wanna do it', language: 'slang', label: 'SL', explanation: 'Completes a common lowkey sentiment.', confidence: 0.62 },
+          { text: 'think so', language: 'slang', label: 'SL', explanation: 'Adds subtle agreement or leaning.', confidence: 0.6 },
+          { text: 'not gonna lie', language: 'slang', label: 'SL', explanation: 'Pairs naturally to reveal honesty.', confidence: 0.59 }
+        ]
+      },
+      {
+        pattern: /^finna/i,
+        suggestions: [
+          { text: 'head out soon', language: 'slang', label: 'SL', explanation: 'Signals you are about to leave.', confidence: 0.64 },
+          { text: 'make moves', language: 'slang', label: 'SL', explanation: 'Casual plan to get going.', confidence: 0.6 },
+          { text: 'grab something', language: 'slang', label: 'SL', explanation: 'Hints at a quick errand.', confidence: 0.57 },
+          { text: 'bounce fr', language: 'slang', label: 'SL', explanation: 'Emphasizes leaving immediately.', confidence: 0.55 }
+        ]
+      },
+      {
+        pattern: /^brb/i,
+        suggestions: [
+          { text: 'grabbing food', language: 'slang', label: 'SL', explanation: 'Friendly status while stepping away.', confidence: 0.68 },
+          { text: 'need a sec', language: 'slang', label: 'SL', explanation: 'Quick notice you will return soon.', confidence: 0.63 },
+          { text: 'hold up', language: 'slang', label: 'SL', explanation: 'Informal pause request.', confidence: 0.6 },
+          { text: 'back in a min', language: 'slang', label: 'SL', explanation: 'Short promise to return quickly.', confidence: 0.58 }
+        ]
+      },
+      {
+        pattern: /^smh/i,
+        suggestions: [
+          { text: "y'all wild", language: 'slang', label: 'SL', explanation: 'Playful judgment while shaking your head.', confidence: 0.66 },
+          { text: 'can’t believe it', language: 'slang', label: 'SL', explanation: 'Extends the disbelief sentiment.', confidence: 0.61 },
+          { text: 'do better', language: 'slang', label: 'SL', explanation: 'Light reprimand delivered casually.', confidence: 0.57 },
+          { text: 'for real?', language: 'slang', label: 'SL', explanation: 'Questions the situation with disbelief.', confidence: 0.56 }
         ]
       }
     ];
@@ -876,11 +949,11 @@
       })[char]);
     }
 
-    function offlineSuggestions(word) {
-      if (!word) {
-        return FALLBACK_DEFAULT.map(cloneSuggestion);
-      }
-      const entry = FALLBACK_LIBRARY.find((item) => item.pattern.test(word));
+    function offlineSuggestions(word, fullText = '') {
+      const trailingDraft = fullText ? fullText.slice(-48).trim() : '';
+      const entry = FALLBACK_LIBRARY.find((item) => {
+        return item.pattern.test(word) || (trailingDraft && item.pattern.test(trailingDraft));
+      });
       const suggestions = entry ? entry.suggestions : FALLBACK_DEFAULT;
       return suggestions.map(cloneSuggestion);
     }
@@ -925,17 +998,17 @@
         confidence: typeof item.confidence === 'number' ? item.confidence : 0.6
       }));
 
-      if (!genieState.enabled || genieState.mode !== 'aggressive') {
+      if (!genieState.enabled || genieState.mode !== 'Strong') {
         suggestions.forEach((suggestion) => {
           suggestion.autoApply = false;
         });
       }
 
       let autoOverride = null;
-      if (genieState.enabled && genieState.mode === 'aggressive' && suggestions[0]?.autoApply) {
+      if (genieState.enabled && genieState.mode === 'Strong' && suggestions[0]?.autoApply) {
         autoOverride = suggestions[0].text;
       }
-      if (genieState.enabled && genieState.mode === 'aggressive' && payload.autoOverride) {
+      if (genieState.enabled && genieState.mode === 'Strong' && payload.autoOverride) {
         autoOverride = payload.autoOverride;
         if (suggestions[0]) {
           suggestions[0].autoApply = true;
@@ -955,7 +1028,7 @@
       if (
         autoOverride &&
         autoOverride !== genieState.lastAutoOverride &&
-        genieState.mode === 'aggressive'
+        genieState.mode === 'Strong'
       ) {
         genieState.lastAutoOverride = autoOverride;
         applySuggestionText(autoOverride, { source: 'auto' });
@@ -979,7 +1052,7 @@
 
     async function requestSuggestions() {
       if (!genieState.enabled) {
-        renderSuggestionChips(offlineSuggestions(getCursorWord()));
+        renderSuggestionChips(offlineSuggestions(getCursorWord(), composer.value));
         return;
       }
 
@@ -1019,7 +1092,7 @@
         if (!controller.signal.aborted) {
           const fallbackPayload = {
             usedLLM: false,
-            suggestions: offlineSuggestions(cursorWord),
+            suggestions: offlineSuggestions(cursorWord, composer.value),
             autoOverride: null
           };
           handleSuggestionsResponse(fallbackPayload, { isFallback: true });
@@ -1079,9 +1152,9 @@
     function updateModeFromSlider(value) {
       const previousMode = genieState.mode;
       if (value <= 33) {
-        genieState.mode = 'passive';
+        genieState.mode = 'Weak';
       } else if (value >= 67) {
-        genieState.mode = 'aggressive';
+        genieState.mode = 'Strong';
       } else {
         genieState.mode = 'balanced';
       }
@@ -1150,7 +1223,7 @@
       if (genieState.enabled) {
         scheduleSuggestionFetch();
       } else {
-        renderSuggestionChips(offlineSuggestions(getCursorWord()));
+        renderSuggestionChips(offlineSuggestions(getCursorWord(), composer.value));
       }
     });
 
@@ -1187,7 +1260,7 @@
     // Kick off initial render
     updateModeFromSlider(Number(overrideSlider.value));
     refreshModeBanner();
-    renderSuggestionChips(offlineSuggestions(''));
+    renderSuggestionChips(offlineSuggestions('', composer.value));
     scheduleSuggestionFetch();
   </script>
 </body>
