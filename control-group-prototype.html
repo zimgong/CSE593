@@ -295,7 +295,39 @@
     const FALLBACK_OPTIONS = [
       { pattern: /^im$/i, options: ['I am', "I'm", 'Im'] },
       { pattern: /^u$/i, options: ['you', 'u', 'yu'] },
-      { pattern: /^kak$/i, options: ['kak', 'kay', 'kay?'] }
+      { pattern: /^kak$/i, options: ['kak', 'kay', 'kay?'] },
+      {
+        pattern: /^lowkey/i,
+        options: ['I would prefer to keep this discreet', 'Privately, I feel the same', 'I would rather keep it subtle']
+      },
+      {
+        pattern: /^bet$/i,
+        options: ['Consider it confirmed', 'Absolutely, I agree', 'That works perfectly for me']
+      },
+      {
+        pattern: /^no\s?cap/i,
+        options: ['To be completely honest', 'Truthfully, that is the case', 'I assure you this is accurate']
+      },
+      {
+        pattern: /^ion\s?even\s?know/i,
+        options: ['I genuinely do not know', 'I am uncertain how to respond', 'I am honestly unsure']
+      },
+      {
+        pattern: /^i'?m\sdead/i,
+        options: ['That is incredibly funny', 'I can hardly contain my laughter', 'This truly amuses me']
+      },
+      {
+        pattern: /^finna/i,
+        options: ['I am about to', 'I intend to', 'I am preparing to']
+      },
+      {
+        pattern: /^brb/i,
+        options: ['I will return shortly', 'Please wait a moment', 'I will be back in a minute']
+      },
+      {
+        pattern: /^smh/i,
+        options: ['I find this disappointing', 'This leaves me quite perplexed', 'I wish the situation were better']
+      }
     ];
     const DEFAULT_OPTIONS = ['I am', "I'm", 'Im'];
 
@@ -308,8 +340,11 @@
       return words[words.length - 1] || '';
     }
 
-    function fallbackSuggestions(word) {
-      const entry = FALLBACK_OPTIONS.find((item) => item.pattern.test(word));
+    function fallbackSuggestions(word, fullText = '') {
+      const trailing = fullText ? fullText.trim().slice(-48) : '';
+      const entry = FALLBACK_OPTIONS.find((item) => {
+        return item.pattern.test(word) || (trailing && item.pattern.test(trailing));
+      });
       return (entry ? entry.options : DEFAULT_OPTIONS).slice();
     }
 
@@ -318,6 +353,15 @@
       controlSuggestions.innerHTML = options.map((text, index) => `
         <div class="suggestion ${index === 0 ? 'primary' : ''}" data-index="${index}">${text}</div>
       `).join('');
+    }
+
+    function autoApplyPrimaryOption() {
+      const primary = currentOptions[0];
+      const word = currentWord();
+      if (!primary || !word || primary === word) {
+        return;
+      }
+      applyOption(primary, { reschedule: false });
     }
 
     function cancelInFlight() {
@@ -354,11 +398,13 @@
         const data = await response.json();
         if (!controller.signal.aborted) {
           const suggestions = (data.suggestions || []).map((item) => item.text).slice(0, 3);
-          renderControlSuggestions(suggestions.length ? suggestions : fallbackSuggestions(cursorWord));
+          renderControlSuggestions(suggestions.length ? suggestions : fallbackSuggestions(cursorWord, controlComposer.value));
+          autoApplyPrimaryOption();
         }
       } catch (error) {
         if (!controller.signal.aborted) {
-          renderControlSuggestions(fallbackSuggestions(cursorWord));
+          renderControlSuggestions(fallbackSuggestions(cursorWord, controlComposer.value));
+          autoApplyPrimaryOption();
         }
       } finally {
         if (inFlight === controller) {
@@ -372,13 +418,18 @@
       debounceTimer = setTimeout(fetchSuggestions, 180);
     }
 
-    function applyOption(text) {
-      const words = controlComposer.value.trimEnd().split(/\s+/);
-      words.pop();
+    function applyOption(text, { reschedule = true } = {}) {
+      const trimmed = controlComposer.value.trimEnd();
+      const words = trimmed ? trimmed.split(/\s+/) : [];
+      if (words.length) {
+        words.pop();
+      }
       words.push(text);
       controlComposer.value = words.join(' ') + ' ';
       controlComposer.focus();
-      scheduleFetch();
+      if (reschedule) {
+        scheduleFetch();
+      }
     }
 
     controlComposer.addEventListener('input', scheduleFetch);
@@ -394,6 +445,7 @@
     });
 
     renderControlSuggestions(currentOptions);
+    autoApplyPrimaryOption();
     scheduleFetch();
   </script>
 </body>
