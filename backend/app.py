@@ -52,6 +52,14 @@ class ContextGenieRequest(BaseModel):
         alias="languagePreferences",
         description="Ordered language preference codes from the UI.",
     )
+    tone: str = Field(
+        default="neutral",
+        description="Desired tone (casual, neutral, formal) as requested by the user.",
+    )
+    transliteration: bool = Field(
+        default=True,
+        description="Whether non-English text should be transliterated into Latin characters.",
+    )
     api_key: Optional[str] = Field(
         default=None,
         alias="apiKey",
@@ -409,6 +417,8 @@ async def suggest_context_genie(payload: ContextGenieRequest) -> SuggestionRespo
         f"Current draft: {payload.text!r}\n"
         f"Cursor word: {cursor!r}\n"
         f"Mode: {payload.mode}\n"
+        f"Tone: {payload.tone}\n"
+        f"Transliteration: {'on' if payload.transliteration else 'off'}\n"
         f"Language preferences: {payload.language_preferences}\n"
         "Return suggestions that keep intent, respect slang, and show multiple languages."
     )
@@ -464,4 +474,3 @@ async def suggest_control(payload: ControlRequest) -> SuggestionResponse:
         suggestions=trimmed,
         auto_override=None,
     )
-
