@@ -9,12 +9,13 @@ demo the UI without external dependencies.
 from __future__ import annotations
 
 import os
+import json
 from functools import lru_cache
 from typing import List, Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 # --- Models -----------------------------------------------------------------
 
@@ -148,54 +149,34 @@ def call_llm(
                     "role": "system",
                     "content": (
                         "You power a multilingual keyboard suggestion bar. "
-                        "Return JSON with a `suggestions` array of at most 4 objects. "
-                        "Each should include `text`, `language`, `label`, `explanation`, "
-                        "`autoApply` (boolean), and `confidence` (0-1 float). "
-                        "Keep slang when requested and respect transliterations."
+                        "Respond with raw JSON only, no code blocks or prose. "
+                        "Structure: {\"suggestions\": [{\"text\": str, \"language\": str, "
+                        "\"label\": str, \"explanation\": str, \"autoApply\": bool, "
+                        "\"confidence\": number}]}. "
+                        "Limit to 4 items, keep slang when requested, and respect transliterations."
                     ),
                 },
                 {"role": "user", "content": prompt},
             ],
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "suggestions_schema",
-                    "schema": {
-                        "type": "object",
-                        "properties": {
-                            "suggestions": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "text": {"type": "string"},
-                                        "language": {"type": "string"},
-                                        "label": {"type": "string"},
-                                        "explanation": {"type": "string"},
-                                        "autoApply": {"type": "boolean"},
-                                        "confidence": {"type": "number"},
-                                    },
-                                    "required": [
-                                        "text",
-                                        "language",
-                                        "label",
-                                        "explanation",
-                                    ],
-                                },
-                                "minItems": 1,
-                                "maxItems": 4,
-                            }
-                        },
-                        "required": ["suggestions"],
-                    },
-                },
-            },
         )
         message = response.output[0].content[0].text
-        payload = SuggestionResponse.model_validate_json(
-            message, strict=False
-        ).suggestions
-        return payload
+        try:
+            raw = json.loads(message)
+        except json.JSONDecodeError:
+            return None
+
+        items = raw.get("suggestions")
+        if not isinstance(items, list):
+            return None
+
+        structured: List[Suggestion] = []
+        for item in items:
+            try:
+                structured.append(Suggestion.model_validate(item))
+            except ValidationError:
+                continue
+
+        return structured or None
     except Exception:
         # Silently degrade to heuristics; logging can be added if needed.
         return None
@@ -410,7 +391,21 @@ async def suggest_context_genie(payload: ContextGenieRequest) -> SuggestionRespo
     When an API key is supplied the backend will attempt to call an OpenAI-compatible
     model for richer suggestions; otherwise it falls back to curated heuristics.
     """
-    cursor = (payload.cursor_word or payload.text.split()[-1] if payload.text else "").strip()
+    cursor = None
+    if payload.cursor_word:
+        cursor = payload.cursor_word.strip()
+    elif payload.text:
+        try:
+            cursor = payload.text.split()[-1].strip()
+        except IndexError:
+            pass
+    if not cursor:
+        return SuggestionResponse(
+            mode=payload.mode,
+            used_llm=False,
+            suggestions=[],
+            auto_override=None,
+        )
 
     prompt = (
         f"Conversation so far: {payload.conversation}\n"
@@ -456,21 +451,50 @@ async def suggest_control(payload: ControlRequest) -> SuggestionResponse:
     """
     Simpler endpoint for the control prototype.
 
-    Always returns deterministic suggestions to mimic stock autocorrect behavior.
+    Attempts a light-touch LLM call for basic spelling/autocorrect suggestions.
+    Falls back to deterministic options when the model is unavailable.
     """
-    cursor = (payload.cursor_word or payload.text.split()[-1] if payload.text else "").strip()
-    suggestions = fallback_suggestions(cursor)
+    cursor = None
+    if payload.cursor_word:
+        cursor = payload.cursor_word.strip()
+    elif payload.text:
+        try:
+            cursor = payload.text.split()[-1].strip()
+        except IndexError:
+            pass
 
-    # Control mode never auto applies; we keep only the top 3 suggestions.
+    normalized_cursor = cursor or ""
+    used_llm = False
+    suggestions: List[Suggestion] = []
+
+    if normalized_cursor:
+        prompt = (
+            "You are the stock autocorrect engine on a phone keyboard. "
+            "Provide up to three short English suggestions for the current word. "
+            "Only fix spelling, capitalization, apostrophes, or simple punctuation. "
+            "Never change tone, add slang, or translate into other languages.\n\n"
+            f"Full draft: {payload.text!r}\n"
+            f"Current word: {normalized_cursor!r}\n"
+            "Respond with JSON of the form {\"suggestions\": [{\"text\": str, "
+            "\"language\": \"en\", \"label\": \"EN\", \"explanation\": str, "
+            "\"autoApply\": false, \"confidence\": number}]}"
+        )
+        llm_result = call_llm(prompt, getattr(payload, "api_key", None))
+        if llm_result:
+            used_llm = True
+            suggestions = llm_result
+
+    if not suggestions:
+        suggestions = fallback_suggestions(normalized_cursor)
+
     trimmed = [
-        suggestions[0].model_copy(update={"auto_apply": False}, deep=True),
-        suggestions[1],
-        suggestions[2],
+        suggestion.model_copy(update={"auto_apply": False}, deep=True)
+        for suggestion in suggestions[:3]
     ]
 
     return SuggestionResponse(
         mode="control",
-        used_llm=False,
+        used_llm=used_llm,
         suggestions=trimmed,
         auto_override=None,
     )

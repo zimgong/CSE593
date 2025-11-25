@@ -201,17 +201,6 @@
       color: #be185d;
     }
 
-    .chip .language-tag {
-      position: absolute;
-      top: 4px;
-      right: 6px;
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      opacity: 0.8;
-    }
-
     .composer-field {
       position: relative;
       background: var(--bg);
@@ -1148,7 +1137,6 @@
       suggestionBar.innerHTML = suggestions.map((suggestion, index) => `
         <button class="chip ${suggestion.autoApply ? 'auto' : ''}" data-language="${suggestion.language}" data-index="${index}" type="button" title="${escapeHtml(suggestion.explanation)}">
           ${escapeHtml(suggestion.text)}
-          <span class="language-tag">${escapeHtml(suggestion.label)}</span>
         </button>
       `).join('');
     }
